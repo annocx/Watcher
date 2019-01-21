@@ -1,0 +1,174 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        //applicationId "cx.turam.com.watcher"
+        minSdkVersion 19
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                cppFlags "-frtti -fexceptions"
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
+    implementation 'com.android.support:design:28.0.0'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+}
+
+//最好加上全局编码设置
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+//1、添加插件
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+
+
+//2、定义版本
+version = "0.0.2"
+
+//3、设置项目代码地址
+//这里我是使用github作为代码开源地址
+
+def siteUrl = 'https://github.com/annocx/Watcher'    // project homepage
+def gitUrl = 'https://github.com/annocx/Watcher.git' // project git
+
+
+//4、定义group
+//这个group定义的名称将是你之后要引用时会用到的，且要唯一，一般是用包名
+
+group = "com.turam"
+//如何确定唯一性呢，可以打开这个地址https://bintray.com/bintray/jcenter，然后搜索一下自己的包名，看是否被人使用过了没。
+
+//5、定义pom并打包aar
+install {
+    repositories.mavenInstaller {
+        // This generates POM.xml with proper parameters
+        pom {
+            project {
+                packaging 'aar'
+                name 'Helen Code For Android'//一些描述
+                url siteUrl
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {//开发者信息
+                        id 'annocx'
+                        name 'annocx'
+                        email 'dearfeakey@gmail.com'
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+                }
+            }
+        } 
+     }
+  }
+
+
+//6、打包javadoc jar和source jar
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+javadoc {
+    options{
+        encoding 'UTF-8'
+        charSet 'UTF-8'
+        author true
+    }
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
+
+
+
+//7、上传到maven仓库，从local.properties读取user和apikey
+//在项目的local.properties文件里配置bintray.user和bintray.apikey，分别为https://bintray.com/ 网站注册的用户名和密钥。 
+//注意：不要将local.properties文件提交到代码开源库上，防止重要信息泄露，记得使用忽略文件将其忽略提交
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+bintray {
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+    configurations = ['archives']
+    pkg {
+        repo = "turam"                     //发布到Bintray的那个仓库里，默认账户有四个库，我们这里上传到maven库
+        name = "Watcher"                // project name in maven 需更改，这个名字就是你在Bintray上创建Package的名字，这里会查询，如果此包不存在就会创建一个
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        licenses = ["Apache-2.0"]
+        publish = true    //true,代表当该task执行时，就将其发布上去，如果为false就不发布
+
+        //原文：https://blog.csdn.net/langwang2/article/details/50512447 
+ //       version {
+ //           gpg {
+ //               sign = true //Determines whether to GPG sign the files. The default is false
+ //               passphrase = properties.getProperty("bintray.gpg.password") //Optional. The passphrase for GPG signing'
+ //           }
+//            mavenCentralSync {
+//                sync = true //Optional (true by default). Determines whether to sync the version to Maven Central.
+//                user = properties.getProperty("bintray.oss.user") //OSS user token
+//                password = properties.getProperty("bintray.oss.password") //OSS user password
+//                close = '1' //Optional property. By default the staging repository is closed and artifacts are released to Maven Central. You can optionally turn this behaviour off (by puting 0 as value) and release the version manually.
+//            }
+//      }
+    }
+}
+
+/*
+apply plugin: 'com.novoda.bintray-release'//添加
+//添加
+publish {
+    userOrg = 'annocx'//bintray.com用户名
+    groupId = 'com.turam'//jcenter上的路径
+    artifactId = 'Watcher'//项目名称
+    publishVersion = '1.0.0'//版本号
+    desc = 'Oh hi, this is a nice description for a project, right?'//描述，不重要
+    website = 'https://github.com/annocx/Watcher'//网站，不重要；尽量模拟github上的地址，例如我这样的；当然你有地址最好了
+}
+*/
